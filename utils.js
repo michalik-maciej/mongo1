@@ -1,10 +1,13 @@
 exports.validateRequestId = function (id = '') {
-  if (id.length === 24) {
+  const idMatch = /^[0-9a-f]{24}$/i;
+
+  if (idMatch.test(id)) {
     return true
   } else {
     return false
   }
 }
+
 
 exports.messages = {
   connectionSuccess: 'Successfully connected to the database',
