@@ -12,6 +12,8 @@
     },
     "rules": {
       "no-console": "off",
+      "brace-style": ["error", "stroustrup"],
+      "semi": ["error", "never"],
       "linebreak-style": ["error", "windows"]
     }
 }

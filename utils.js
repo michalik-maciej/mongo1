@@ -1,18 +1,18 @@
-exports.validateRequestId = (id = '') => {
-  const idMatch = /^[0-9a-f]{24}$/i;
-
-  if (idMatch.test(id)) {
-    return true;
-  }
-
-  return false;
-};
-
-exports.messages = {
+const messages = {
   connectionSuccess: 'Successfully connected to the database',
-  connectionError: 'Connection error',
   notFound: { message: 'Resource not found...' },
   requestInvalid: { message: 'Invalid request id' },
-  requestSuccess: { message: 'OK' },
-  requestError: (err) => ({ message: err }),
-};
+  requestSuccess: {
+    confirm: { message: 'OK' },
+    describe: (info) => ({ message: { ...info } }),
+  },
+  error: (err) => ({ message: err }),
+}
+exports.messages = messages
+
+exports.answerError = (err, res) => {
+  if (err.name === 'CastError') {
+    return res.status(404).json(messages.requestInvalid)
+  }
+  return res.status(500).json(messages.error(err))
+}

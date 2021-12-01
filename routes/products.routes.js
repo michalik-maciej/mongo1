@@ -1,100 +1,85 @@
-const express = require('express');
+const express = require('express')
 
-const router = express.Router();
-const { ObjectId } = require('mongodb');
-const { validateRequestId, messages } = require('../utils');
+const router = express.Router()
+const { answerError, messages } = require('../utils')
+const Product = require('../models/product.model')
 
-router.get('/products', (req, res) => {
-  req.db
-    .collection('products')
-    .find()
-    .toArray((err, data) => {
-      if (err) {
-        res.status(500).json({ message: err });
-      } else {
-        res.json({ message: data });
-      }
-    });
-});
-
-router.get('/products/random', (req, res) => {
-  req.db
-    .collection('products')
-    .aggregate([{ $sample: { size: 1 } }])
-    .toArray((err, data) => {
-      if (err) {
-        res.status(500).json({ message: err });
-      } else {
-        res.json(data[0]);
-      }
-    });
-});
-
-router.get('/products/:id', (req, res) => {
-  if (validateRequestId(req.params.id)) {
-    req.db.collection('products').findOne(
-      {
-        _id: ObjectId(req.params.id),
-      },
-      (err, data) => {
-        if (err) {
-          res.status(500).json({ message: err });
-        } else if (!data) {
-          res.status(404).json(messages.notFound);
-        } else {
-          res.json(data);
-        }
-      },
-    );
-  } else {
-    res.status(404).json(messages.requestInvalid);
+router.get('/products', async (req, res) => {
+  try {
+    res.json(await Product.find())
   }
-});
+  catch (err) {
+    res.status(500).json(messages.error(err))
+  }
+})
 
-router.post('/products', (req, res) => {
-  req.db.collection('products').insertOne({ ...req.body }, (err) => {
-    if (err) {
-      res.status(500).json({ message: err });
-    } else {
-      res.json(messages.requestSuccess);
+router.get('/products/random', async (req, res) => {
+  try {
+    const randomProd = await Product.aggregate([{ $sample: { size: 1 } }])
+    res.json(randomProd[0])
+  }
+  catch (err) {
+    res.status(500).json(messages.error(err))
+  }
+})
+
+router.get('/products/:id', async (req, res) => {
+  try {
+    const prod = await Product.findById(req.params.id)
+    if (prod) {
+      res.json(prod)
     }
-  });
-});
-
-router.put('/products/:id', (req, res) => {
-  if (validateRequestId(req.params.id)) {
-    req.db
-      .collection('products')
-      .updateOne(
-        { _id: ObjectId(req.params.id) },
-        { $set: { ...req.body } },
-        (err) => {
-          if (err) {
-            res.status(500).json({ message: err });
-          } else {
-            res.json(messages.requestSuccess);
-          }
-        },
-      );
-  } else {
-    res.status(404).json(messages.requestInvalid);
+    else {
+      res.status(404).json(messages.notFound)
+    }
   }
-});
-
-router.delete('/products/:id', (req, res) => {
-  if (validateRequestId(req.params.id)) {
-    req.db
-      .collection('products')
-      .deleteOne({ _id: ObjectId(req.params.id) }, (err) => {
-        if (err) {
-          res.status(500).json({ message: err });
-        } else {
-          res.json(messages.requestSuccess);
-        }
-      });
-  } else {
-    res.status(404).json(messages.requestInvalid);
+  catch (err) {
+    answerError(err, res)
   }
-});
+})
 
-module.exports = router;
+router.post('/products', async (req, res) => {
+  try {
+    const newProduct = new Product({ ...req.body })
+    await newProduct.save()
+    res.json(messages.requestSuccess.confirm)
+  }
+  catch (err) {
+    res.status(500).json(messages.error(err))
+  }
+})
+
+router.put('/products/:id', async (req, res) => {
+  try {
+    const prod = await Product.findById(req.params.id)
+    if (prod) {
+      await Product.updateOne({ _id: req.params.id }, { $set: { ...req.body } })
+      const newProd = await Product.findById(req.params.id)
+      res.json(messages.requestSuccess.describe({ method: 'updated', newProd }))
+    }
+    else {
+      res.status(404).json(messages.notFound)
+    }
+  }
+  catch (err) {
+    answerError(err, res)
+  }
+})
+
+router.delete('/products/:id', async (req, res) => {
+  try {
+    const prod = await Product.findById(req.params.id)
+    if (prod) {
+      await prod.remove()
+      res.json(messages.requestSuccess.describe({ method: 'deleted', prod }))
+    }
+    else {
+      res.status(404).json(messages.notFound)
+    }
+  }
+  catch (err) {
+    answerError(err, res)
+  }
+})
+
+module.exports = router

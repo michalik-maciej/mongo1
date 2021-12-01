@@ -1,97 +1,86 @@
-const express = require('express');
+const express = require('express')
 
-const router = express.Router();
-const { ObjectId } = require('mongodb');
-const { validateRequestId, messages } = require('../utils');
-const Department = require('../models/department.model');
+const router = express.Router()
+const { answerError, messages } = require('../utils')
+const Department = require('../models/department.model')
 
-router.get('/departments', (req, res) => {
-  req.db
-    .collection('departments')
-    .find()
-    .toArray((err, data) => {
-      if (err) {
-        res.status(500).json({ message: err });
-      } else {
-        res.json({ message: data });
-      }
-    });
-});
-
-router.get('/departments/random', (req, res) => {
-  req.db
-    .collection('departments')
-    .aggregate([{ $sample: { size: 1 } }])
-    .toArray((err, data) => {
-      if (err) {
-        res.status(500).json({ message: err });
-      } else {
-        res.json(data[0]);
-      }
-    });
-});
-
-router.get('/departments/:id', (req, res) => {
-  if (validateRequestId(req.params.id)) {
-    req.db.collection('departments').findOne(
-      {
-        _id: ObjectId(req.params.id),
-      },
-      (err, data) => {
-        if (err) {
-          res.status(500).json({ message: err });
-        } else if (!data) {
-          res.status(404).json(messages.notFound);
-        } else {
-          res.json(data);
-        }
-      },
-    );
-  } else {
-    res.status(404).json(messages.requestInvalid);
+router.get('/departments', async (req, res) => {
+  try {
+    res.json(await Department.find())
   }
-});
+  catch (err) {
+    res.status(500).json(messages.error(err))
+  }
+})
+
+router.get('/departments/random', async (req, res) => {
+  try {
+    const randomDept = await Department.aggregate([{ $sample: { size: 1 } }])
+    res.json(randomDept[0])
+  }
+  catch (err) {
+    res.status(500).json(messages.error(err))
+  }
+})
+
+router.get('/departments/:id', async (req, res) => {
+  try {
+    const dept = await Department.findById(req.params.id)
+    if (dept) {
+      res.json(dept)
+    }
+    else {
+      res.status(404).json(messages.notFound)
+    }
+  }
+  catch (err) {
+    answerError(err, res)
+  }
+})
 
 router.post('/departments', async (req, res) => {
   try {
-    const { name } = req.body;
-    const newDepartment = new Department({ name });
-    await newDepartment.save();
-    res.json(messages.requestSuccess);
-  } catch (err) {
-    res.status(500).json(messages.requestError(err));
+    const newDepartment = new Department({ ...req.body })
+    await newDepartment.save()
+    res.json(messages.requestSuccess.confirm)
   }
-});
-
-router.put('/departments/:id', (req, res) => {
-  if (validateRequestId(req.params.id)) {
-    const { name } = req.body;
-    req.db
-      .collection('departments')
-      .updateOne(
-        { _id: ObjectId(req.params.id) },
-        { $set: { name } },
-        (err) => {
-          if (err) res.status(500).json({ message: err });
-          else res.json(messages.requestSuccess);
-        },
-      );
-  } else {
-    res.status(404).json(messages.requestInvalid);
+  catch (err) {
+    res.status(500).json(messages.error(err))
   }
-});
+})
 
-router.delete('/departments/:id', (req, res) => {
-  if (validateRequestId(req.params.id)) {
-    req.db
-      .collection('departments')
-      .deleteOne({ _id: ObjectId(req.params.id) }, (err) => {
-        if (err) res.status(500).json({ message: err });
-        else res.json(messages.requestSuccess);
-      });
-  } else {
-    res.status(404).json(messages.requestInvalid);
+router.put('/departments/:id', async (req, res) => {
+  const { name } = req.body
+  try {
+    const dept = await Department.findById(req.params.id)
+    if (dept) {
+      dept.name = name
+      await dept.save()
+      res.json(messages.requestSuccess.describe({ method: 'updated', dept }))
+    }
+    else {
+      res.status(404).json(messages.notFound)
+    }
   }
-});
+  catch (err) {
+    answerError(err, res)
+  }
+})
 
-module.exports = router;
+router.delete('/departments/:id', async (req, res) => {
+  try {
+    const dept = await Department.findById(req.params.id)
+    if (dept) {
+      await dept.remove()
+      res.json(messages.requestSuccess.describe({ method: 'deleted', dept }))
+    }
+    else {
+      res.status(404).json(messages.notFound)
+    }
+  }
+  catch (err) {
+    answerError(err, res)
+  }
+})
+
+module.exports = router
