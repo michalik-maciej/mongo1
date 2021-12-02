@@ -6,7 +6,7 @@ const Employee = require('../models/employee.model')
 
 router.get('/employees', async (req, res) => {
   try {
-    res.json(await Employee.find())
+    res.json(await Employee.find().populate('Department'))
   }
   catch (err) {
     res.status(500).json(messages.error(err))
@@ -25,7 +25,7 @@ router.get('/employees/random', async (req, res) => {
 
 router.get('/employees/:id', async (req, res) => {
   try {
-    const empl = await Employee.findById(req.params.id)
+    const empl = await Employee.findById(req.params.id).populate('Department')
     if (empl) {
       res.json(empl)
     }
