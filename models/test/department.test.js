@@ -1,5 +1,4 @@
 const { expect } = require('chai')
-const mongoose = require('mongoose')
 const Department = require('../department.model')
 
 describe('Department', () => {
@@ -7,6 +6,7 @@ describe('Department', () => {
     const dep = new Department({})
     dep.validate((err) => expect(err.errors.name).to.exist)
   })
+
   it('should throw an error if `name` is not a string', () => {
     const cases = [{}, []]
     cases.forEach((name) => {
@@ -14,6 +14,7 @@ describe('Department', () => {
       dep.validate((err) => expect(err.errors.name).to.exist)
     })
   })
+
   it('should throw an error if `name` length is too short or too long', () => {
     const cases = ['four', 'tweeeeeeeeeeeeeentyTwo']
     cases.forEach((name) => {
@@ -21,6 +22,7 @@ describe('Department', () => {
       dep.validate((err) => expect(err.errors.name).to.exist)
     })
   })
+
   it('should not throw an error if `name` is correct', () => {
     const dep = new Department({ name: 'Physics' })
     dep.validate((err) => expect(err).to.not.exist)
